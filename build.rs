@@ -41,77 +41,20 @@ fn main() {
 
     // https://doc.rust-lang.org/reference/linkage.html#static-and-dynamic-c-runtimes
     let features = env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or(String::new());
+
+    let vcpkg_os_name =
+        if target.contains("linux") { "x64-linux" }
+        else if target.contains("windows") {"x64-windows" }
+        else { "x64-osx" };
+
+    let output = if target.contains("windows") {
+        Command::new("./build-third-party.bat").output().unwrap()
+    } else {
+        Command::new("./build-third-party.sh").output().unwrap()
+    };
+
     println!("CARGO_CFG_TARGET_FEATURE={}", features);
     let static_crt = features.contains("crt-static");
-
-    {
-        let mut env = HashMap::<String, String>::new();
-        env.insert(String::from("OUT_DIR"), out_dir.to_slash().unwrap());
-        env.insert(String::from("SRC_DIR"), src_dir.to_slash().unwrap());
-        env.insert(String::from("DEBUG"), build_debug.to_string());
-
-        if &target_env == "msvc" {
-            let tool = cc::windows_registry::find_tool(&target, "cl.exe").expect("Cannot find msvc");
-            for (k, v) in tool.env() {
-                env.insert(k.clone().into_string().unwrap(), v.clone().into_string().unwrap());
-            }
-
-            let msvc_rt_flag = match (static_crt, build_debug) {
-                (true, true) => "-MTd",
-                (true, false) => "-MT",
-                (false, true) => "-MDd",
-                (false, false) => "-MD"
-            };
-            env.insert(String::from("CC"), String::from("cl.exe"));
-            env.insert(String::from("CXX"), String::from("cl.exe"));
-            env.insert(String::from("CFLAGS"), String::from(msvc_rt_flag));
-            env.insert(String::from("CXXFLAGS"), String::from(msvc_rt_flag));
-        }
-
-        println!("cargo:warning=Run make with env: {:?}", env);
-        assert!(Command::new("make")
-            .args(&["-f", "makefile.cargo", "-j", &env::var("NUM_JOBS").unwrap()])
-            .envs(env)
-            .status().unwrap()
-            .success());
-
-        println!("cargo:rustc-link-search=native={}", out_dir.join("lib").display());
-        if &target_env == "msvc" {
-            if build_debug {
-                println!("cargo:rustc-link-lib=static=sicuucd");
-                println!("cargo:rustc-link-lib=static=sicudtd");
-            } else {
-                println!("cargo:rustc-link-lib=static=sicuuc");
-                println!("cargo:rustc-link-lib=static=sicudt");
-            }
-        } else {
-            println!("cargo:rustc-link-lib=static=icuuc");
-            println!("cargo:rustc-link-lib=static=icudata");
-        }
-    }
-
-    {
-        let mut cfg = cc::Build::new();
-        cfg.cpp(true)
-            .flag("-std=c++11")
-            .static_crt(static_crt)
-            .define("HAVE_ICU", "1")
-            .define("HAVE_ICU_BUILTIN", "1");
-            // .define("HAVE_OT", "1");
-
-        if !target.contains("windows") {
-            cfg.define("HAVE_PTHREAD", "1");
-        }
-
-        if target.contains("apple") {
-            cfg.define("HAVE_CORETEXT", "1");
-        }
-
-        cfg.include(out_dir.join("include"))
-            .file("minikin/third-party/harfbuzz/src/harfbuzz.cc")
-            .file("minikin/third-party/harfbuzz/src/hb-icu.cc")
-            .compile("harfbuzz");
-    }
 
     {
         let mut minikin_cfg = cmake::Config::new("minikin");
@@ -128,6 +71,20 @@ fn main() {
         let minikin_out = minikin_cfg.build();
         println!("cargo:rustc-link-search=native={}", minikin_out.display());
         println!("cargo:rustc-link-lib=static=minikin");
+
+        println!("cargo:rustc-link-search=native={}/vcpkg/installed/{}/lib", src_dir.display(), vcpkg_os_name);
+
+        println!("cargo:rustc-link-lib=static=harfbuzz");
+        println!("cargo:rustc-link-lib=static=harfbuzz-icu");
+        println!("cargo:rustc-link-lib=static=icuuc");
+        println!("cargo:rustc-link-lib=static=icudata");
+        println!("cargo:rustc-link-lib=static=freetype");
+        println!("cargo:rustc-link-lib=static=bz2");
+        println!("cargo:rustc-link-lib=static=png");
+        println!("cargo:rustc-link-lib=static=z");
+        println!("cargo:rustc-link-lib=static=png");
+        println!("cargo:rustc-link-lib=static=brotlidec-static");
+        println!("cargo:rustc-link-lib=static=brotlicommon-static");
     }
 
     if let Some(name) = cpp_stdlib_name() {

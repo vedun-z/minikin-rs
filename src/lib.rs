@@ -90,7 +90,7 @@ mod tests {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let mut font_file1 = File::open(root.join("fonts/Roboto-Regular.ttf")).unwrap();
         let mut font_buffer1 = Vec::new();
-        let mut font_file2 = File::open("/System/Library/Fonts/Apple Color Emoji.ttc").unwrap();
+        let mut font_file2 = File::open("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf").unwrap();
         let mut font_buffer2 = Vec::new();
         font_file1.read_to_end(&mut font_buffer1).unwrap();
         font_file2.read_to_end(&mut font_buffer2).unwrap();

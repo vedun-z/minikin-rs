@@ -5,8 +5,20 @@ set(CMAKE_CXX_STANDARD 17)
 
 option(MSVC_DYNAMIC_RT OFF)
 
-include_directories(third-party/harfbuzz/src)
-include_directories(third-party/icu/icu4c/source/common)
+
+if (UNIX)
+  if(APPLE)
+    set(VCPKG_NAME x64-osx)
+  else()  
+    set(VCPKG_NAME x64-linux)
+  endif()
+else() 
+  set(VCPKG_NAME x64-windows)
+endif()	
+
+
+include_directories(${CMAKE_SOURCE_DIR}/../vcpkg/installed/${VCPKG_NAME}/include/)
+include_directories(${CMAKE_SOURCE_DIR}/../vcpkg/installed/${VCPKG_NAME}/include/harfbuzz)
 include_directories(src)
 
 FILE(GLOB minikin src/minikin/*.cpp)
@@ -15,5 +27,4 @@ FILE(GLOB utils src/utils/*.cpp)
 
 add_library(minikin STATIC library.cpp library.h ${minikin} ${log} ${utils})
 set_property(TARGET minikin PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<BOOL:${MSVC_DYNAMIC_RT}>:DLL>")
-
-install (TARGETS minikin DESTINATION .)
+install (TARGETS minikin  DESTINATION .)
