@@ -42,16 +42,18 @@ fn main() {
     // https://doc.rust-lang.org/reference/linkage.html#static-and-dynamic-c-runtimes
     let features = env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or(String::new());
 
+    let is_linux = target.contains("linux");
+    let is_windows = target.contains("windows");
     let vcpkg_os_name =
-        if target.contains("linux") { "x64-linux" }
-        else if target.contains("windows") {"x64-windows" }
+        if is_linux { "x64-linux" }
+        else if is_windows {"x64-windows" }
         else { "x64-osx" };
 
-    let output = if target.contains("windows") {
-        Command::new("./build-third-party.bat").output().unwrap()
-    } else {
-        Command::new("./build-third-party.sh").output().unwrap()
-    };
+    let mut build_third_party_script = src_dir.clone();
+    build_third_party_script.push(
+        if is_windows { "build-third-party.bat" } else {"build-third-party.sh"}
+    );
+    Command::new(build_third_party_script).status().unwrap();
 
     println!("CARGO_CFG_TARGET_FEATURE={}", features);
     let static_crt = features.contains("crt-static");
@@ -74,17 +76,37 @@ fn main() {
 
         println!("cargo:rustc-link-search=native={}/vcpkg/installed/{}/lib", src_dir.display(), vcpkg_os_name);
 
-        println!("cargo:rustc-link-lib=static=harfbuzz");
-        println!("cargo:rustc-link-lib=static=harfbuzz-icu");
-        println!("cargo:rustc-link-lib=static=icuuc");
-        println!("cargo:rustc-link-lib=static=icudata");
-        println!("cargo:rustc-link-lib=static=freetype");
-        println!("cargo:rustc-link-lib=static=bz2");
-        println!("cargo:rustc-link-lib=static=png");
-        println!("cargo:rustc-link-lib=static=z");
-        println!("cargo:rustc-link-lib=static=png");
-        println!("cargo:rustc-link-lib=static=brotlidec-static");
-        println!("cargo:rustc-link-lib=static=brotlicommon-static");
+        let libs = if is_windows {
+            ["brotlicommon",
+            "brotlidec",
+            "brotlienc",
+            "bz2",
+            "freetype",
+            "harfbuzz",
+            "harfbuzz-icu",
+            "icudt",
+            "icuin",
+            "icuio",
+            "icutu",
+            "icuuc",
+            "libpng16",
+            "zlib"].iter()
+        } else {
+            ["harfbuzz",
+             "harfbuzz-icu",
+             "icuuc",
+             "icudata",
+             "freetype",
+             "png",
+             "bz2",
+             "z",
+             "brotlidec-static",
+             "brotlicommon-static"].iter()
+        };
+
+        for lib in libs {
+            println!("cargo:rustc-link-lib=static={}", lib);
+        }
     }
 
     if let Some(name) = cpp_stdlib_name() {
