@@ -46,14 +46,14 @@ fn main() {
     let is_windows = target.contains("windows");
     let vcpkg_os_name =
         if is_linux { "x64-linux" }
-        else if is_windows {"x64-windows" }
+        else if is_windows {"x64-windows-static" }
         else { "x64-osx" };
 
     let mut build_third_party_script = src_dir.clone();
     build_third_party_script.push(
         if is_windows { "build-third-party.bat" } else {"build-third-party.sh"}
     );
-    Command::new(build_third_party_script).status().unwrap();
+    Command::new(build_third_party_script).status().expect("failed to execute process");
 
     println!("CARGO_CFG_TARGET_FEATURE={}", features);
     let static_crt = features.contains("crt-static");
@@ -77,9 +77,8 @@ fn main() {
         println!("cargo:rustc-link-search=native={}/vcpkg/installed/{}/lib", src_dir.display(), vcpkg_os_name);
 
         let libs = if is_windows {
-            ["brotlicommon",
-            "brotlidec",
-            "brotlienc",
+            ["brotlicommon-static",
+            "brotlidec-static",
             "bz2",
             "freetype",
             "harfbuzz",

@@ -6,6 +6,6 @@ if not exist vcpkg.exe (
   call bootstrap-vcpkg.bat 
 )
 
-vcpkg.exe install harfbuzz[icu]:x64-windows
+vcpkg.exe install harfbuzz[icu]:x64-windows-static
 
 

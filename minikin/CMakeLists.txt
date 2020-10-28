@@ -13,7 +13,9 @@ if (UNIX)
     set(VCPKG_NAME x64-linux)
   endif()
 else() 
-  set(VCPKG_NAME x64-windows)
+  set(VCPKG_NAME x64-windows-static)
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 endif()	
 
 
